@@ -82,4 +82,10 @@ class PayrollControllerTest extends TestCase
             'month' => 10,
         ])->assertStatus(200);
     }
+
+    // TODO the following test scenarios for date offsetting
+    // 2025, 3 = last day of the month is a Monday 31st = payday should be Friday 28th
+    // 2025, 2 = last day of the month is Friday 28th = payday should be Thursday 27th
+    // 2024, 12 = last day of the month is Tuesday 31st = payday should be Monday 31st
+    // 2021, 5 = last day of the month is Monday 31st, but it's a bank holiday = payday should be Friday 28th
 }
