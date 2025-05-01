@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\PayrollCheckRequest;
+use Illuminate\Http\JsonResponse;
 
 class PayrollController extends Controller
 {
-    public function check(Request $request)
+    public function check(PayrollCheckRequest $request): JsonResponse
     {
         return response()->json([
             'data' => [
