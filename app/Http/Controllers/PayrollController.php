@@ -31,7 +31,7 @@ class PayrollController extends Controller
     {
         $this->payday = $date->endOfMonth();
 
-        // Loop, subtracting a day until $this->>payday is neither a weekend nor a bank holiday
+        // Loop, subtracting a day until $this->payday is neither a weekend nor a bank holiday
         do {
             $this->payday = $this->payday->subDay();
         } while ($this->checkIfExcluded($this->payday));
