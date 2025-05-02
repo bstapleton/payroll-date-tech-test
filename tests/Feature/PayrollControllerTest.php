@@ -2,6 +2,7 @@
 
 namespace Feature;
 
+use Citco\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -83,9 +84,117 @@ class PayrollControllerTest extends TestCase
         ])->assertStatus(200);
     }
 
-    // TODO the following test scenarios for date offsetting
-    // 2025, 3 = last day of the month is a Monday 31st = payday should be Friday 28th
-    // 2025, 2 = last day of the month is Friday 28th = payday should be Thursday 27th
-    // 2024, 12 = last day of the month is Tuesday 31st = payday should be Monday 31st
-    // 2021, 5 = last day of the month is Monday 31st, but it's a bank holiday = payday should be Friday 28th
+    /**
+     * Given the last day f the month is a Sunday
+     * And the preceding Friday is not a bank holiday
+     * When requesting the payday
+     * Then the payday should be set to the previous Friday in the requested month/year combination
+     *
+     * @return void
+     */
+    #[Test]
+    public function payday_is_sunday()
+    {
+        $response = $this->postJson('/api/', [
+            'year' => 2025,
+            'month' => 3,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2025-03-28',
+            'transfer_date' => '2025-03-24',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+
+        // It's a Friday
+        $this->assertTrue($payday->isFriday());
+
+        // It's not a bank holiday
+        $this->assertFalse($payday->isBankHoliday());
+
+        // The transfer date is 4 days prior
+        $this->assertTrue(Carbon::parse($response->json()['data']['transfer_date'])->format('Y-m-d') === $payday->subDays(4)->format('Y-m-d'));
+    }
+
+    /**
+     * Given the day-before-last of the month is a normal non-bank-holiday workday
+     * When requesting the payday
+     * Then the payday should be set to the day-before-last of the provided month/year combination
+     *
+     * @return void
+     */
+    #[Test]
+    public function payday_is_normal_weekday()
+    {
+        $response = $this->postJson('/api/', [
+            'year' => 2025,
+            'month' => 4,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2025-04-29',
+            'transfer_date' => '2025-04-25',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+
+        $this->assertTrue($payday->isTuesday());
+        $this->assertFalse($payday->isBankHoliday());
+        $this->assertTrue(Carbon::parse($response->json()['data']['transfer_date'])->format('Y-m-d') === $payday->subDays(4)->format('Y-m-d'));
+    }
+
+    /**
+     * Given the last day of the month is Easter Sunday
+     * When requesting the payday
+     * Then the payday should be set to the Thursday before the last day of the provided month/year combination
+     *
+     * @return void
+     */
+    #[Test]
+    public function payday_is_during_easter()
+    {
+        $response = $this->postJson('/api/', [
+            'year' => 2024,
+            'month' => 3,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2024-03-28',
+            'transfer_date' => '2024-03-24',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+
+        $this->assertTrue($payday->isThursday());
+        $this->assertFalse($payday->isBankHoliday());
+        $this->assertTrue(Carbon::parse($response->json()['data']['transfer_date'])->format('Y-m-d') === $payday->subDays(4)->format('Y-m-d'));
+    }
+
+    /**
+     * Given the last day of the month falls on the August Bank Holiday
+     * When requesting the payday
+     * Then the payday should be set to the Friday before the last day of the provided month/year combination
+     *
+     * @return void
+     */
+    #[Test]
+    public function august_bank_holiday()
+    {
+        $response = $this->postJson('/api/', [
+            'year' => 2020,
+            'month' => 8,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2020-08-28',
+            'transfer_date' => '2020-08-24',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+
+        $this->assertTrue($payday->isFriday());
+        $this->assertFalse($payday->isBankHoliday());
+        $this->assertTrue(Carbon::parse($response->json()['data']['transfer_date'])->format('Y-m-d') === $payday->subDays(4)->format('Y-m-d'));
+    }
 }
