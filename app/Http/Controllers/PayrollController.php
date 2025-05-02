@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PayrollCheckRequest;
 use Illuminate\Http\JsonResponse;
 use Citco\Carbon;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PayrollController extends Controller
 {
@@ -24,6 +26,16 @@ class PayrollController extends Controller
                 'payday' => $this->payday->format('Y-m-d'),
                 'transfer_date' => $this->payday->subDays(4)->format('Y-m-d'),
             ]
+        ]);
+    }
+
+    public function show(PayrollCheckRequest $request): Response
+    {
+        return Inertia::render('Welcome', [
+            'response' => [
+                'success' => true,
+                'data' => $this->check($request),
+            ],
         ]);
     }
 
