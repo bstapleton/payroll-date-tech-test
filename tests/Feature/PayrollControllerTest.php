@@ -197,4 +197,48 @@ class PayrollControllerTest extends TestCase
         $this->assertFalse($payday->isBankHoliday());
         $this->assertTrue(Carbon::parse($response->json()['data']['transfer_date'])->format('Y-m-d') === $payday->subDays(4)->format('Y-m-d'));
     }
+
+    /**
+     * Given a consumer has set the flag to handle backdating of the transfer date
+     * When requesting a payday where the original transfer dat would land on either a weekend or Bank Holiday
+     * Then the transfer date should also be backdated to the nearest non-weekend, non-bank-holiday day
+     *
+     * @return void
+     */
+    #[Test]
+    public function transfer_back_dating_is_handled_correctly()
+    {
+        $response = $this->postJson('/api/', [
+            'year' => 2022,
+            'month' => 12,
+            'backdate_transfer_day' => true,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2022-12-30',
+            'transfer_date' => '2022-12-23',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+        $this->assertFalse($payday->isBankHoliday());
+        $transferDate = Carbon::parse($response->json()['data']['transfer_date']);
+        $this->assertFalse($transferDate->isBankHoliday());
+        $this->assertFalse($transferDate->isWeekend());
+
+        // Then re-run the request again without the flag being se tot confirm it still works as intended
+        $response = $this->postJson('/api/', [
+            'year' => 2022,
+            'month' => 12,
+        ]);
+
+        $response->assertJsonFragment([
+            'payday' => '2022-12-30',
+            'transfer_date' => '2022-12-26',
+        ]);
+
+        $payday = Carbon::parse($response->json()['data']['payday']);
+        $this->assertFalse($payday->isBankHoliday());
+        $transferDate = Carbon::parse($response->json()['data']['transfer_date']);
+        $this->assertEquals('Boxing Day', $transferDate->isBankHoliday());
+    }
 }
